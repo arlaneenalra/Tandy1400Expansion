@@ -1,0 +1,37 @@
+name: CMake
+on: [push, pull_request]
+
+# Based off of https://github.com/raspberrypi/pico-examples/blob/b6ac07f1946271de2817f94d8ffc0425ecb7c2a9/.github/workflows/cmake.yml
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    steps:
+    - name: Clean workspace
+      run: |
+        echo "Cleaning up previous run"
+        rm -rf "${{ github.workspace }}"
+        mkdir -p "${{ github.workspace }}"
+
+    - name: Checkout pico-examples
+      uses: actions/checkout@v4
+
+    - name: Checkout pico-sdk submodules
+      working-directory: ${{github.workspace}}
+      run: git submodule update --init --recursive
+
+    - name: Setup CMake
+      run: setup.sh  
+
+    - name: Get core count
+      id: core_count
+      run : cat /proc/cpuinfo  | grep processor | wc -l
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      run: cmake --build . --config $BUILD_TYPE --parallel $(nproc)
