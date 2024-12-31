@@ -23,10 +23,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cmake python3 build-essential gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
 
-    - name: Checkout pico-examples
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Checkout pico-sdk submodules
+    - name: Checkout submodules
       working-directory: ${{github.workspace}}
       run: git submodule update --init --recursive
 
