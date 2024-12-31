@@ -31,7 +31,8 @@ jobs:
       run: git submodule update --init --recursive
 
     - name: Setup CMake
-      run: setup.sh  
+      working-directory: ${{github.workspace}}
+      run: ./setup.sh  
 
     - name: Get core count
       id: core_count
