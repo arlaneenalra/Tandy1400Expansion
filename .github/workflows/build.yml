@@ -9,12 +9,19 @@ env:
 
 jobs:
   build:
+    runs-on: ununtu-latest
+
     steps:
     - name: Clean workspace
       run: |
         echo "Cleaning up previous run"
         rm -rf "${{ github.workspace }}"
         mkdir -p "${{ github.workspace }}"
+
+    - name: Setup build stack
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake python3 build-essential gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
 
     - name: Checkout pico-examples
       uses: actions/checkout@v4
