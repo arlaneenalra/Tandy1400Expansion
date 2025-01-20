@@ -2,6 +2,7 @@
 
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
+#include "hardware/pio.h"
 
 #include <inttypes.h>
 
@@ -65,21 +66,26 @@
  */
 
 // Data operations only happen on pins 0-8
-#define DATA_MASK          0x000000FF
-#define CONTROL_MASK       0x000FFF00
+#define DATA_MASK          0x000000FFu
+#define CONTROL_MASK       0x000FFF00u
 
 // We control the first 20 GPIO pins
-#define DATA_FUNCTION_MASK 0x000FFFFF
+#define DATA_FUNCTION_MASK 0x000FFFFFu
 
-// Set things up so watching AEN and ALE
-#define OE_MASK (  \
-    SET_BIT(OE_DATA)     \
+#define OE_MASK (       \
+    SET_BIT(OE_DATA)    \
     | SET_BIT(OE_REQ)   \
     | SET_BIT(BANK_0)   \
     | SET_BIT(BANK_1)   \
     | SET_BIT(BANK_2)   \
     | SET_BIT(BANK_3)   \
     )
+
+// Bank pins
+#define BUS_BANK_0 SET_BIT(BANK_0)
+#define BUS_BANK_1 SET_BIT(BANK_1)
+#define BUS_BANK_2 SET_BIT(BANK_2)
+#define BUS_BANK_3 SET_BIT(BANK_3)
 
 // Specific IO masks
 #define BUS_AEN SET_BIT(AEN)
@@ -102,6 +108,8 @@
 #define BUS_OP_READ (BUS_E_MEM_READ | BUS_E_IO_READ)
 #define BUS_OP_WRITE (BUS_E_MEM_WRITE | BUS_E_IO_WRITE)
 
+#define BUS_OP_MEM (BUS_E_MEM_WRITE | BUS_E_MEM_READ)
+#define BUS_OP_IO (BUS_E_IO_WRITE | BUS_E_IO_READ)
 
 /**
  * Structure representing the current state of the attached ISA
@@ -109,8 +117,8 @@
  *
  */
 typedef struct isa_bus_state_type {
-  uint32_t addr; // The bus actually uses 20bit addresses, but there
-                 // are no 20bit types.
+  uint32_t addr; // The bus actually uses 20bit addresses,
+                          // but there are no 20bit types.
   
   uint8_t operation;
   uint8_t data;
@@ -123,10 +131,12 @@ typedef struct isa_bus_state_type {
 void init_isa_bus();
 
 void isa_read_operation(isa_bus_state_t *bus);
-void isa_wait_for_addr();
+void isa_wait_for_addr(isa_bus_state_t *bus);
 
 void __isa_set_bank(uint32_t bank);
-
 #define isa_set_bank(b) __isa_set_bank(SET_BIT(b))
 
+void isa_read_bus(isa_bus_state_t *bus);
 
+// Include the isa_mem pio header
+#include "isa_mem.pio.h"

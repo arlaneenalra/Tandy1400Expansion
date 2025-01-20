@@ -1,0 +1,95 @@
+
+
+; Bank side set definitions
+.define PIO_BANK_0 0b1110
+.define PIO_BANK_1 0b1101
+.define PIO_BANK_2 0b1011
+.define PIO_BANK_3 0
+
+; Bank 2 constants
+.define PIO_AEN 4
+.define PIO_ALE 5
+
+; Bank 3 constants
+.define PIO_RESET 0
+.define PIO_TC    1
+.define PIO_EIR   2
+.define PIO_EIW   3
+.define PIO_EMR   4
+.define PIO_EMW   5
+.define PIO_ECLK  6
+.define PIO_DACK  7
+
+
+
+.program isa_addr 
+.pio_version 1 
+
+.fifo rx
+
+.side_set 4 
+.in 8 left
+
+.clock_div 4 ; set for 250mhz main clock
+
+; The 74ALVC16425 has a max switching time some where around 10ns when
+; running on VccA = 3.3v and VccB = 5v. We have to switch banks 4~5
+; times during a bus cycle adding around 50ns on top of the actual read
+; values.
+restart:
+  nop                side PIO_BANK_2 
+.wrap_target
+  ; Wait for Address to be latched
+  wait 1 pin PIO_ALE side PIO_BANK_2
+  wait 0 pin PIO_ALE side PIO_BANK_2
+
+  ; Read Address, We're using nops to add delay since we have conditional
+  ; side set and need longer pauses.
+  in pins 4  [1]     side PIO_BANK_1
+  in pins 8  [1]     side PIO_BANK_0
+  in pins 8  [1]     side PIO_BANK_3
+  
+  ; Read the command byte
+  in pins 8  [1]     side PIO_BANK_2 
+
+  ; We should have the address now, 
+  push               side PIO_BANK_2
+
+  ;; We'll need to pick up the Data part here.
+.wrap
+
+% c-sdk {
+
+static inline void isa_addr_pio_init(PIO pio, uint sm, uint offset) {
+  pio_sm_config c = isa_addr_program_get_default_config(offset);
+
+  // Start the data pins as inputs
+  pio_sm_set_consecutive_pindirs(pio, sm, DATA_0, 8, false); 
+  
+  // Setup PIO pin functions, this could be done with a loop,
+  pio_gpio_init(pio, DATA_0);
+  pio_gpio_init(pio, DATA_1);
+  pio_gpio_init(pio, DATA_2);
+  pio_gpio_init(pio, DATA_3);
+  pio_gpio_init(pio, DATA_4);
+  pio_gpio_init(pio, DATA_5);
+  pio_gpio_init(pio, DATA_6);
+  pio_gpio_init(pio, DATA_7);
+
+  sm_config_set_sideset_pin_base(&c, BANK_0);
+  pio_gpio_init(pio, BANK_0); 
+  pio_gpio_init(pio, BANK_1); 
+  pio_gpio_init(pio, BANK_2); 
+  pio_gpio_init(pio, BANK_3);
+
+  // Clear 
+  pio_sm_set_pins_with_mask(pio, sm, 1,
+    BUS_BANK_0 | BUS_BANK_1 | BUS_BANK_2 | BUS_BANK_3);     
+  pio_sm_set_consecutive_pindirs(pio, sm, BANK_0, 4, true);
+
+  // Configure the PIO and start it running.
+  pio_sm_init(pio, sm, offset, &c);
+  pio_sm_set_enabled(pio, sm, true);
+}
+
+%}
